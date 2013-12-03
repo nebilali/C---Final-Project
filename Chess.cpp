@@ -18,12 +18,3 @@ Chess::Chess(){
 	connect(newgame, SIGNAL(clicked()), board, SLOT(newgamePressed()));
 	connect(undo, SIGNAL(clicked()), board, SLOT(undoPressed()));
 }
-
-
-void draw(){
-	QPainter painter;
-	painter.drawQRect();  
-}
-
-
-int main(){}

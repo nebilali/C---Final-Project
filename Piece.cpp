@@ -1,7 +1,10 @@
 #include "Piece.h" 
 
+Piece::Piece(){
+    
+}
 
-String Piece::getName(){
+std::string Piece::getName(){
 	return name; 
 } 
 
@@ -18,11 +21,11 @@ void Piece::setPosition(int r, int c){
 	column = c; 
 } 
 
-String Piece::getColor(){
+std::string Piece::getColor(){
 	return color; 
 }
 
-bool Piece::hasMoved(){
+bool Piece::getHasMoved(){
 	return hasMoved;
 } 
 

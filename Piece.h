@@ -6,7 +6,7 @@
 #ifndef PIECE_H_
 #define PIECE_H_ 
 
-#include <strings>
+#include <string>
 #include <QImage>
 
 class Piece {
@@ -14,16 +14,17 @@ protected:
 	int row; 
 	int column; 
 	bool hasMoved; 
-	String name; 
-	String color;
+	std::string name; 
+	std::string color;
 
 public: 
-	String getName(); 
+	Piece();
+	std::string getName(); 
 	int getRow(); 
 	int getColumn(); 
 	void setPosition(int r, int c); 
-	String getColor(); 
-	bool hasMoved(); 
+	std::string getColor(); 
+	bool getHasMoved(); 
 	void sethasMoved(bool b); 
 	void moved();	
 

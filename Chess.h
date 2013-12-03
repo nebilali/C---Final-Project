@@ -9,7 +9,7 @@
 
 class Board;
 
-class Chess: public widget {
+class Chess : public QWidget {
 Q_OBJECT
 private:
 	Board *board;
