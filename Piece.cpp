@@ -1,7 +1,7 @@
 #include "Piece.h" 
 
 Piece::Piece(){
-    
+
 }
 
 std::string Piece::getName(){
@@ -36,3 +36,7 @@ void Piece::sethasMoved(bool b){
 void Piece::moved(){
 	hasMoved = true; 
 }   
+
+QImage * Piece::getImage(){
+    return image;
+}

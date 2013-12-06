@@ -4,69 +4,8 @@
 
 
 #include "Board.h"
-/*
-class Piece; 
-class BoardSquare {
-private: 
-        int row; 
-        int column; 
-        int width; 
-        int height; 
-        string color; 
-        
-        Piece piece; 
-        bool highlighted; 
-public: 
-        BoardSquare(int row, int column, Strng color);
-        int getRow();   
-        int getColumn();
-        String getPieceName(); 
-        Piece getPieceName();
-        void setPiece(Piece p);
-        void draw(Graphics g);
-        String getColor; 
-        void updatePrev(int turn);
-        void resetPrev();
-        void undo(int turn);
-        void move(boardSquare S); 
-        void highlight(boolean b);
-};
-
-#endif
-*/
-/* 
-class Board: public QWidget{
-Q_OBJECT
-private: 
-        int BOARDWIDTH;
-        int BOARDHEIGHT;
-
-        BoardSquare[8][8] squares;
-        int turn; 
-        bool check; 
-        bool blackcheck; 
-        bool whitecheck; 
-        bool moving; 
-public: 
-        Board(); 
-        void newGame(); 
-        void initialize();
-        void reset(); 
-        void resetPieces();
-        void launchInstructions();
-        void undo(); 
-        void checkCheck()
-        void paintComponent(Graphics g);
-//ect..
-//need to finish
-public slots:
-        void newgamePressed();
-        void undoPressed();
-
-};
-
-#endif
-*/
+#include <algorithm>
+#include <cstdlib>
 
 BoardSquare::BoardSquare(int r, int c, std::string color){
         row = r; 
@@ -75,7 +14,409 @@ BoardSquare::BoardSquare(int r, int c, std::string color){
         width = 50; 
         height = 50;  
         highlighted = false; 	
-        piece = NULL; 
+        piece = NULL;
+}
+
+int BoardSquare::getRow(){
+        return row;
+}   
+int BoardSquare::getColumn(){
+        return column;
+}
+//        void updatePrev(int turn);
+//        void resetPrev();
+
+void BoardSquare::undo(int turn){
+//      WE NEED TO DO THIS ASAP
+
+}
+
+void BoardSquare::move(BoardSquare *s){
+        s->setPiece(piece);
+        piece->moved();
+        piece = NULL;
+}
+
+void BoardSquare::highlight(bool b){
+        highlighted = b;
+}
+
+bool BoardSquare::canMove(int r, int c, BoardSquare ***squares){
+        std::string n = piece->getName();
+        BoardSquare *s = squares[r][c];
+        if(n == "rook"){
+                if(s->getPiece() == NULL){
+                        if(r == row){
+                                bool inbetween = false;
+                                for(int i = std::min(c, column)+1;
+                                                i < std::max(c, column); i++){
+                                        if(squares[row][i]->getPiece() != NULL){
+                                                inbetween = true;
+                                        }
+                                }
+                                return !inbetween;
+                        }
+                        if(c == column){
+                                bool inbetween = false;
+                                for(int i = std::min(r, row)+1;
+                                                i < std::max(r, row); i++){
+                                        if(squares[i][column]->getPiece() != NULL){
+                                                inbetween = true;
+                                        }
+                                }
+                                return !inbetween;
+                        }
+                }
+                return false;
+        }
+        else if(n == "knight"){
+                if(s->getPiece() == NULL){                        
+                        //L-shaped movement
+                        if(std::abs(r - row) == 2 && std::abs(c - column) == 1){
+                                return true;
+                        }
+                        if(std::abs(r - row) == 1 && std::abs(c - column) == 2){
+                                return true;
+                        }
+                }
+                return false;
+        }
+        else if(n == "bishop"){
+                if(s->getPiece() == NULL){
+                        //No piece already occupying square
+                        if(std::abs(r - row) == std::abs(c - column)){
+                                //Diagonal --> horiz and vert distance identical
+                                bool inbetween = false;
+                                //Nothing in between the bishop and target destination
+                                if((r > row && c > column) || (r < row && c < column)){
+                                        for(int i = 1; i < std::abs(r - row); i++){
+                                                if (squares[std::min(r, row)+i][std::min(c,column)+i]->getPiece() != NULL){
+                                                        inbetween = true;
+                                                }
+                                        }
+                                }
+                                else{
+                                        for(int i = 1; i < std::abs(r-row); i++){
+                                                if(squares[std::min(r,row) + i][std::max(c, column)-i]->getPiece() != NULL){
+                                                        inbetween = true;
+                                                }
+                                        }
+                                }
+                                if(!inbetween){
+                                        return true;
+                                }
+                        }
+                }
+                return false;
+        }
+        else if(n == "king"){
+                if(s->getPiece() == NULL){
+                        if(std::abs(r - row) < 2 && std::abs(c - column) < 2){
+                                return true;
+                        }
+                        if(r == row && !piece->getHasMoved()){
+                                //Castling
+                                if(c == column - 2){
+                                        if (squares[row][column - 4]->getPiece() != NULL &&
+                                                        !squares[row][column - 4]->getPiece()->getHasMoved() && 
+                                                        squares[row][column - 1]->getPiece() == NULL &&
+                                                        squares[row][column - 3]->getPiece() == NULL){
+                                                return true;
+                                        }
+                                }
+                                if(c == column + 2){
+                                        if(squares[row][column + 3]->getPiece() != NULL && 
+                                                        !squares[row][column + 3]->getPiece()->getHasMoved() &&
+                                                        squares[row][column + 1]->getPiece() == NULL){
+                                                return true;
+                                        }
+                                }
+                        }
+                }
+                return false;
+        }
+        else if(n == "queen"){
+                bool rOrB = false;
+                if(s->getPiece() == NULL){
+                        if(r == row){
+                                bool inbetween = false;
+                                for(int i = std::min(c, column)+1;
+                                                i < std::max(c, column); i++){
+                                        if(squares[row][i]->getPiece() != NULL){
+                                                inbetween = true;
+                                        }
+                                }
+                                if(!inbetween){
+                                        rOrB = true;
+                                }
+                        }
+                        if(c == column){
+                                bool inbetween = false;
+                                for(int i = std::min(r, row)+1;
+                                                i < std::max(r, row); i++){
+                                        if(squares[i][column]->getPiece() != NULL){
+                                                inbetween = true;
+                                        }
+                                }
+                                if(!inbetween){
+                                        rOrB = true;
+                                }
+                        }
+                }
+
+                if(s->getPiece() == NULL){
+                        //No piece already occupying square
+                        if(std::abs(r - row) == std::abs(c - column)){
+                                //Diagonal --> horiz and vert distance identical
+                                bool inbetween = false;
+                                //Nothing in between the bishop and target destination
+                                if((r > row && c > column) || (r < row && c < column)){
+                                        for(int i = 1; i < std::abs(r - row); i++){
+                                                if (squares[std::min(r, row)+i][std::min(c,column)+i]->getPiece() != NULL){
+                                                        inbetween = true;
+                                                }
+                                        }
+                                }
+                                else{
+                                        for(int i = 1; i < std::abs(r-row); i++){
+                                                if(squares[std::min(r,row) + i][std::max(c, column)-i]->getPiece() != NULL){
+                                                        inbetween = true;
+                                                }
+                                        }
+                                }
+                                if(!inbetween){
+                                        rOrB = true;
+                                }
+                        }
+                }
+
+                return rOrB;
+        }
+
+        else if(n == "pawn"){
+                if(s->getPiece() == NULL){
+                        if(piece->getColor() == "black"){
+                                if(c == column){
+                                        if(r == row + 1){
+                                                //only can move if 1 square ahead
+                                                return true;
+                                        }
+                                        if(r == row + 2 && piece->getHasMoved() == false){
+                                                //unless it hasn't moved yet, in which case it can move two, too
+                                                if(squares[row + 1][c]->getPiece() != NULL){
+                                                        return false;
+                                                }
+                                                return true;
+                                        }
+                                }
+                        }
+                        else{
+                                if(c == column){
+                                        if(r == row - 1){
+                                                //only can move if 1 square ahead
+                                                return true;
+                                        }
+                                        if(r == row - 2 && piece->getHasMoved() == false){
+                                                //unless it hasn't moved yet, in which case it can move two, too
+                                                if(squares[row - 1][c]->getPiece() != NULL){
+                                                        return false;
+                                                }
+                                                return true;
+                                        }
+                                }
+                        }
+                }
+                return false;
+        }
+
+        else{
+                //THIS SHOULD NEVER HAPPEN WHAT?
+                return false;
+        }
+
+
+}
+
+bool BoardSquare::canTake(int r, int c, BoardSquare ***squares){
+        //REMEMBER TO IMPLEMENT PAWN CASE!!!!!!!!!!!!!
+        std::string otherColor;
+        if(piece->getColor() == "white"){
+                otherColor = "black";
+        }
+        else{
+                otherColor = "white";
+        }
+        std::string n = piece->getName();
+        BoardSquare *s = squares[r][c];
+        if(n == "rook"){
+                if(s->getPiece() != NULL && s->getPiece()->getColor() == otherColor){
+                        if(r == row){
+                                bool inbetween = false;
+                                for(int i = std::min(c, column)+1;
+                                                i < std::max(c, column); i++){
+                                        if(squares[row][i]->getPiece() != NULL){
+                                                inbetween = true;
+                                        }
+                                }
+                                return !inbetween;
+                        }
+                        if(c == column){
+                                bool inbetween = false;
+                                for(int i = std::min(r, row)+1;
+                                                i < std::max(r, row); i++){
+                                        if(squares[i][column]->getPiece() != NULL){
+                                                inbetween = true;
+                                        }
+                                }
+                                return !inbetween;
+                        }
+                }
+                return false;
+        }
+        else if(n == "knight"){
+                if(s->getPiece() != NULL && s->getPiece()->getColor() == otherColor){                        
+                        //L-shaped movement
+                        if(std::abs(r - row) == 2 && std::abs(c - column) == 1){
+                                return true;
+                        }
+                        if(std::abs(r - row) == 1 && std::abs(c - column) == 2){
+                                return true;
+                        }
+                }
+                return false;
+        }
+        else if(n == "bishop"){
+                if(s->getPiece() != NULL && s->getPiece()->getColor() == otherColor){
+                        //No piece already occupying square
+                        if(std::abs(r - row) == std::abs(c - column)){
+                                //Diagonal --> horiz and vert distance identical
+                                bool inbetween = false;
+                                //Nothing in between the bishop and target destination
+                                if((r > row && c > column) || (r < row && c < column)){
+                                        for(int i = 1; i < std::abs(r - row); i++){
+                                                if (squares[std::min(r, row)+i][std::min(c,column)+i]->getPiece() != NULL){
+                                                        inbetween = true;
+                                                }
+                                        }
+                                }
+                                else{
+                                        for(int i = 1; i < std::abs(r-row); i++){
+                                                if(squares[std::min(r,row) + i][std::max(c, column)-i]->getPiece() != NULL){
+                                                        inbetween = true;
+                                                }
+                                        }
+                                }
+                                if(!inbetween){
+                                        return true;
+                                }
+                        }
+                }
+                return false;
+        }
+        else if(n == "king"){
+                if(s->getPiece() != NULL && s->getPiece()->getColor() == otherColor){
+                        if(std::abs(r - row) < 2 && std::abs(c - column) < 2){
+                                return true;
+                        }
+                        if(r == row && !piece->getHasMoved()){
+                                //Castling
+                                if(c == column - 2){
+                                        if (squares[row][column - 4]->getPiece() != NULL &&
+                                                        !squares[row][column - 4]->getPiece()->getHasMoved() && 
+                                                        squares[row][column - 1]->getPiece() == NULL &&
+                                                        squares[row][column - 3]->getPiece() == NULL){
+                                                return true;
+                                        }
+                                }
+                                if(c == column + 2){
+                                        if(squares[row][column + 3]->getPiece() != NULL && 
+                                                        !squares[row][column + 3]->getPiece()->getHasMoved() &&
+                                                        squares[row][column + 1]->getPiece() == NULL){
+                                                return true;
+                                        }
+                                }
+                        }
+                }
+                return false;
+        }
+        else if(n == "queen"){
+                bool rOrB = false;
+                if(s->getPiece() != NULL && s->getPiece()->getColor() == otherColor){
+                        if(r == row){
+                                bool inbetween = false;
+                                for(int i = std::min(c, column)+1;
+                                                i < std::max(c, column); i++){
+                                        if(squares[row][i]->getPiece() != NULL){
+                                                inbetween = true;
+                                        }
+                                }
+                                if(!inbetween){
+                                        rOrB = true;
+                                }
+                        }
+                        if(c == column){
+                                bool inbetween = false;
+                                for(int i = std::min(r, row)+1;
+                                                i < std::max(r, row); i++){
+                                        if(squares[i][column]->getPiece() != NULL){
+                                                inbetween = true;
+                                        }
+                                }
+                                if(!inbetween){
+                                        rOrB = true;
+                                }
+                        }
+                }
+
+                if(s->getPiece() != NULL && s->getPiece()->getColor() == otherColor){
+                        //No piece already occupying square
+                        if(std::abs(r - row) == std::abs(c - column)){
+                                //Diagonal --> horiz and vert distance identical
+                                bool inbetween = false;
+                                //Nothing in between the bishop and target destination
+                                if((r > row && c > column) || (r < row && c < column)){
+                                        for(int i = 1; i < std::abs(r - row); i++){
+                                                if (squares[std::min(r, row)+i][std::min(c,column)+i]->getPiece() != NULL){
+                                                        inbetween = true;
+                                                }
+                                        }
+                                }
+                                else{
+                                        for(int i = 1; i < std::abs(r-row); i++){
+                                                if(squares[std::min(r,row) + i][std::max(c, column)-i]->getPiece() != NULL){
+                                                        inbetween = true;
+                                                }
+                                        }
+                                }
+                                if(!inbetween){
+                                        rOrB = true;
+                                }
+                        }
+                }
+
+                return rOrB;
+        }
+
+        else if(n == "pawn"){
+                if(s->getPiece() != NULL && s->getPiece()->getColor() == otherColor){
+                        if(piece->getColor() == "black"){
+                                if(r == row + 1 && (std::abs(c - column) == 1)){
+                                        return true;
+                                }
+                        }
+                        else{
+                                if(r == row - 1 && (std::abs(c - column) == 1)){
+                                        return true;  
+                                }
+                        }
+                }
+                return false;
+        }
+
+        else{
+                //THIS SHOULD NEVER HAPPEN WHAT?
+                return false;
+        }
 }
 
 std::string BoardSquare::getColor(){
@@ -94,6 +435,11 @@ std::string BoardSquare::getPieceName(){
                 return piece->getName();
         }
 }
+
+Piece * BoardSquare::getPiece(){
+        return piece;
+}
+
 
 Board::Board(QWidget *parent) : QWidget(parent){
         setFixedSize(400,400);
@@ -121,6 +467,10 @@ void Board::reset(){
         whitecheck = false;
         moving = false;
         whitemove = true;
+        pressR = -1;
+        pressC = -1;
+        movingR = -1;
+        movingC = -1;
 
         turn = 1;
 
@@ -181,55 +531,55 @@ void Board::paintEvent(QPaintEvent*){
                         }
                         if(squares[i][j]->getPieceName() != ""){
                                 QPointF point(squarex, squarey);
-                                QImage *image = new QImage;
-                                std::string s = squares[i][j]->getPieceName();
-                                if(s == "White Pawn"){
-                                        image->load("./resources/whitePawn.png");
-                                }
-                                if(s == "White Rook"){
-                                        image->load("./resources/whiteRook.png");
-                                }
-                                if(s == "White Knight"){
-                                        image->load("./resources/whiteKnight.png");
-                                }
-                                if(s == "White Bishop"){
-                                        image->load("./resources/whiteBishop.png");                                        
-                                }
-                                if(s == "White King"){
-                                        image->load("./resources/whiteKing.png");                                        
-                                }
-                                if(s == "White Queen"){
-                                        image->load("./resources/whiteQueen.png");
-                                }
-                                if(s == "Black Pawn"){
-                                        image->load("./resources/blackPawn.png");
-                                }
-                                if(s == "Black Rook"){
-                                        image->load("./resources/blackRook.png");
-                                }
-                                if(s == "Black Knight"){
-                                        image->load("./resources/blackKnight.png");
-                                }
-                                if(s == "Black Bishop"){
-                                        image->load("./resources/blackBishop.png");                                        
-                                }
-                                if(s == "Black King"){
-                                        image->load("./resources/blackKing.png");                                        
-                                }
-                                if(s == "Black Queen"){
-                                        image->load("./resources/blackQueen.png");
-                                }
-                                p.drawImage(point, *image);
+                                p.drawImage(point, *(squares[i][j]->getPiece()->getImage()));
+                                
                         }
                 }
         }
 
 }
 
-void Board::newgamePressed(){
+void Board::mousePressEvent(QMouseEvent * event){
+
+        int c = event->x()/50;
+        int r = event->y()/50;
+
+        if(c < 8 && r < 8){
+                pressC = c;
+                pressR = r;
+        }
 
 }
 
-void Board::undoPressed(){
+void Board::mouseReleaseEvent(QMouseEvent * event){
+        int c = event->x()/50;
+        int r = event->y()/50;
 
+        if(r == pressR && c == pressC){
+                if(moving){
+                        squares[movingR][movingC]->move(squares[r][c]);
+                        movingC = -1;
+                        movingR = -1;
+                        moving = false;
+                        update();
+                }
+                else{
+                        if(squares[r][c]->getPiece() != NULL){
+                                moving = true;
+                                movingC = c;
+                                movingR = r;
+                        }
+                }
+        }
+
+        pressR = -1;
+        pressC = -1;
+}
+
+void Board::newgamePressed(){
+        reset();
+}
+
+void Board::undoPressed(){
+        //!!!!!!!!!!!!!!!!!!!!!!!!
 }

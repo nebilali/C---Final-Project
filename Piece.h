@@ -16,6 +16,7 @@ protected:
 	bool hasMoved; 
 	std::string name; 
 	std::string color;
+	QImage *image;
 
 public: 
 	Piece();
@@ -26,7 +27,8 @@ public:
 	std::string getColor(); 
 	bool getHasMoved(); 
 	void sethasMoved(bool b); 
-	void moved();	
+	void moved();
+	QImage *getImage();
 
 };
 

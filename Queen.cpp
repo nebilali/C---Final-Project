@@ -4,10 +4,11 @@
         setPosition(r, c);
         hasMoved = false;
         this->color = color;
+        name = "queen";
         if(color == "white"){
-            name = "White Queen";
+            image = new QImage("./resources/whiteQueen.png");
         }
         else{
-            name = "Black Queen";
+            image = new QImage("./resources/blackQueen.png");
         }
     }

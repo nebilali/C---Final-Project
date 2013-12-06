@@ -21,7 +21,7 @@ private:
 	int column; 
 	int width; 
 	int height; 
-	std::string color; 
+	std::string color;
 	
 	Piece *piece; 
 	bool highlighted; 
@@ -36,8 +36,11 @@ public:
 	void updatePrev(int turn);
 	void resetPrev();
 	void undo(int turn);
-	void move(BoardSquare s);
+	void move(BoardSquare *s);
 	void highlight(bool b);
+
+	bool canMove(int r, int c, BoardSquare*** squares);
+	bool canTake(int r, int c, BoardSquare*** squares);
 };
 
 #endif
@@ -59,6 +62,13 @@ private:
 	bool moving;
 	bool whitemove;
 
+	int movingR;
+	int movingC;
+
+	int pressR;
+	int pressC;
+
+
 public: 
 	Board(QWidget *parent); 
 	void newGame(); 
@@ -78,6 +88,8 @@ public slots:
 
 protected:
 	void paintEvent(QPaintEvent* event);
+	void mousePressEvent(QMouseEvent * event);
+	void mouseReleaseEvent(QMouseEvent * event);
 
 };
 

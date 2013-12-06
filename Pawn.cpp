@@ -3,11 +3,14 @@
     Pawn::Pawn(int r, int c, std::string color){
         setPosition(r, c);
         hasMoved = false;
+        left = false;
+        right = false;
         this->color = color;
+        name = "pawn";
         if(color == "white"){
-            name = "White Pawn";
+            image = new QImage("./resources/whitePawn.png");
         }
         else{
-            name = "Black Pawn";
+            image = new QImage("./resources/blackPawn.png");
         }
     }
