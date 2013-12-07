@@ -4,6 +4,7 @@
 
 #include <QtGui>
 #include <string>
+#include <map>
 #include "Piece.h"
 #include "Bishop.h"
 #include "Pawn.h"
@@ -25,6 +26,8 @@ private:
 	
 	Piece *piece; 
 	bool highlighted; 
+
+	std::map<int, Piece*> undoMap;
 public: 
 	BoardSquare(int r, int c, std::string color);
 	int getRow(); 	
@@ -38,9 +41,12 @@ public:
 	void undo(int turn);
 	void move(BoardSquare *s);
 	void highlight(bool b);
+	bool isHighlighted();
 
-	bool canMove(int r, int c, BoardSquare*** squares);
-	bool canTake(int r, int c, BoardSquare*** squares);
+	void updateMap(int turn);
+
+	bool canMove(int r, int c, BoardSquare* squares[8][8]);
+	bool canTake(int r, int c, BoardSquare* squares[8][8]);
 };
 
 #endif
@@ -62,6 +68,12 @@ private:
 	bool moving;
 	bool whitemove;
 
+	int wKR; //white king row
+	int wKC;
+
+	int bKR;
+	int bKC;
+
 	int movingR;
 	int movingC;
 
@@ -75,10 +87,11 @@ public:
 	void initialize(); 
 	void reset(); 
 	void resetPieces(); 
-	void launchInstructions(); 
 	void undo(); 
 	void checkCheck();
-	void draw();
+	bool checkCheckMate();
+	void move(int startR, int startC, int finR, int finC);
+	bool canMove(int startR, int startC, int finR, int finC);
 //	void paintComponent(Graphics g); 
 //ect..
 //need to finish

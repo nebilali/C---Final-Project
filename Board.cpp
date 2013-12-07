@@ -6,6 +6,7 @@
 #include "Board.h"
 #include <algorithm>
 #include <cstdlib>
+#include <iostream>
 
 BoardSquare::BoardSquare(int r, int c, std::string color){
         row = r; 
@@ -23,12 +24,9 @@ int BoardSquare::getRow(){
 int BoardSquare::getColumn(){
         return column;
 }
-//        void updatePrev(int turn);
-//        void resetPrev();
 
 void BoardSquare::undo(int turn){
-//      WE NEED TO DO THIS ASAP
-
+        piece = undoMap[turn];
 }
 
 void BoardSquare::move(BoardSquare *s){
@@ -37,11 +35,26 @@ void BoardSquare::move(BoardSquare *s){
         piece = NULL;
 }
 
+bool BoardSquare::isHighlighted(){
+        return highlighted;
+}
+
+void BoardSquare::updateMap(int turn){
+        Piece * piececopy;
+        if(piece != NULL){
+                piececopy = new Piece(*piece);
+        }
+        else{
+                piececopy = NULL;
+        }
+        undoMap[turn] = piececopy;
+}
+
 void BoardSquare::highlight(bool b){
         highlighted = b;
 }
 
-bool BoardSquare::canMove(int r, int c, BoardSquare ***squares){
+bool BoardSquare::canMove(int r, int c, BoardSquare *squares[8][8]){
         std::string n = piece->getName();
         BoardSquare *s = squares[r][c];
         if(n == "rook"){
@@ -237,7 +250,7 @@ bool BoardSquare::canMove(int r, int c, BoardSquare ***squares){
 
 }
 
-bool BoardSquare::canTake(int r, int c, BoardSquare ***squares){
+bool BoardSquare::canTake(int r, int c, BoardSquare *squares[8][8]){
         //REMEMBER TO IMPLEMENT PAWN CASE!!!!!!!!!!!!!
         std::string otherColor;
         if(piece->getColor() == "white"){
@@ -492,6 +505,9 @@ void Board::resetPieces(){
                 squares[1][j]->setPiece(new Pawn(1,j,"black"));
         }
 
+        bKR = 0;
+        bKC = 4;
+
         //White pieces
         squares[7][0]->setPiece(new Rook(7,0,"white"));
         squares[7][7]->setPiece(new Rook(7,7,"white"));
@@ -505,18 +521,29 @@ void Board::resetPieces(){
                 squares[6][j]->setPiece(new Pawn(6,j,"white"));
         }
 
+        wKR = 7;
+        wKC = 4;
+
         //Clearing the rest of the board
         for(int i = 2; i < 6; i++){
                 for(int j = 0; j < 8; j++){
                         squares[i][j]->setPiece(NULL);
                 }
         }
+
+        for(int i = 0; i < 8; i++){
+                for(int j = 0; j < 8; j++){
+                        squares[i][j]->updateMap(turn);
+                        squares[i][j]->highlight(false);
+                }
+        }
+
+
 }
 
 void Board::paintEvent(QPaintEvent*){
         QPainter p(this);
 
-        //frame
         p.drawRect(0, 0, 399, 399);
 
         for(int i = 0; i < 8; i++){
@@ -531,12 +558,65 @@ void Board::paintEvent(QPaintEvent*){
                         }
                         if(squares[i][j]->getPieceName() != ""){
                                 QPointF point(squarex, squarey);
-                                p.drawImage(point, *(squares[i][j]->getPiece()->getImage()));
-                                
+                                p.drawImage(point, *(squares[i][j]->getPiece()->getImage()));     
+                        }
+                        if(squares[i][j]->isHighlighted()){
+                                p.fillRect(squarex, squarey, 50, 50, QBrush(QColor(80, 255, 80, 128)));
                         }
                 }
         }
 
+}
+
+
+
+void Board::move(int startR, int startC, int finR, int finC){
+        //casting needs to get handled
+        if(squares[startR][startC]->getPiece()->getName() == "king"){
+                if(startC == finC + 2){
+                        squares[startR][startC - 4]->move(squares[startR][startC - 1]);
+                }
+                else if(startC == finC - 2){
+                        squares[startR][startC + 3]->move(squares[startR][startC + 1]);
+                }
+                if(squares[startR][startC]->getPiece()->getColor() == "white"){
+                        wKR = finR;
+                        wKC = finC;
+                }
+                else{
+                        bKR = finR;
+                        bKC = finC;
+                }
+        }
+        squares[startR][startC]->move(squares[finR][finC]);
+        whitemove = !whitemove;
+        turn++;
+        for(int i = 0; i < 8; i++){
+                for(int j = 0; j < 8; j++){
+                        squares[i][j]->updateMap(turn);
+                }
+        }
+        checkCheck();
+}
+
+bool Board::canMove(int startR, int startC, int finR, int finC){
+        BoardSquare *sqr = squares[startR][startC];
+        if(sqr->canMove(finR, finC, squares) || sqr->canTake(finR, finC, squares)){
+                bool willCheck = false;
+                std::string tempColor = sqr->getPiece()->getColor();
+                move(startR, startC, finR, finC);
+                if(tempColor == "white"){
+                        willCheck = whitecheck;
+                }
+                else{
+                        willCheck = blackcheck;
+                }
+                undo();
+                return !willCheck;
+        }
+        else{
+                return false;
+        }
 }
 
 void Board::mousePressEvent(QMouseEvent * event){
@@ -557,17 +637,80 @@ void Board::mouseReleaseEvent(QMouseEvent * event){
 
         if(r == pressR && c == pressC){
                 if(moving){
-                        squares[movingR][movingC]->move(squares[r][c]);
+                        if(canMove(movingR, movingC, r, c)){
+                                move(movingR, movingC, r, c);
+                                if(squares[r][c]->getPiece()->getName() == "pawn" && (r == 0 || r == 7)){
+                                        QMessageBox msgBox;
+                                        QPushButton *qButton = msgBox.addButton(tr("Queen"), QMessageBox::ActionRole);
+                                        QPushButton *rButton = msgBox.addButton(tr("Rook"), QMessageBox::ActionRole);
+                                        QPushButton *nButton = msgBox.addButton(tr("Knight"), QMessageBox::ActionRole);
+                                        QPushButton *bButton = msgBox.addButton(tr("Bishop"), QMessageBox::ActionRole);
+                                        msgBox.setText("Promote Pawn");
+                                        msgBox.exec();
+                                        std::string pawnColor = squares[r][c]->getPiece()->getColor();
+                                        if (msgBox.clickedButton() == bButton){
+                                                squares[r][c]->setPiece(new Bishop(r, c, pawnColor));
+                                        }
+                                        else if (msgBox.clickedButton() == rButton){
+                                                squares[r][c]->setPiece(new Rook(r, c, pawnColor));
+                                        }
+                                        else if (msgBox.clickedButton() == nButton){
+                                                squares[r][c]->setPiece(new Knight(r, c, pawnColor));
+                                        }
+                                        else if (msgBox.clickedButton() == qButton){
+                                                squares[r][c]->setPiece(new Queen(r, c, pawnColor));
+                                        }
+                                        squares[r][c]->updateMap(turn);
+                                }
+                        }
+                        for(int i = 0; i < 8; i++){
+                                for(int j = 0; j < 8; j++){
+                                        squares[i][j]->highlight(false);
+                                }
+                        }
+                        if(checkCheckMate()){
+                                QMessageBox msgBox;
+                                QPushButton *ngButton = msgBox.addButton(tr("New Game"), QMessageBox::ActionRole);
+                                QPushButton *uButton = msgBox.addButton(tr("Undo"), QMessageBox::ActionRole);
+                                msgBox.setText("Checkmate!");
+                                msgBox.exec();
+                                if (msgBox.clickedButton() == ngButton){
+                                        reset();
+                                } 
+                                else if (msgBox.clickedButton() == uButton){
+                                        undo();
+                                        update();
+                                }
+
+                        }
+                        else if(check){
+                                QMessageBox msgBox;
+                                msgBox.setText("Check!");
+                                msgBox.exec();
+                        }
                         movingC = -1;
                         movingR = -1;
                         moving = false;
+
                         update();
                 }
                 else{
                         if(squares[r][c]->getPiece() != NULL){
-                                moving = true;
-                                movingC = c;
-                                movingR = r;
+                                if(((squares[r][c]->getPiece()->getColor() == "white") && whitemove) ||
+                                        ((squares[r][c]->getPiece()->getColor() == "black") && !whitemove)){
+                                        moving = true;
+                                        movingC = c;
+                                        movingR = r;
+                                        squares[r][c]->highlight(true);
+                                        for(int i = 0; i < 8; i++){
+                                                for(int j = 0; j < 8; j++){
+                                                        if(canMove(r, c, i, j)){
+                                                                squares[i][j]->highlight(true);
+                                                        }
+                                                }
+                                        }
+                                        update();
+                                }
                         }
                 }
         }
@@ -576,10 +719,130 @@ void Board::mouseReleaseEvent(QMouseEvent * event){
         pressC = -1;
 }
 
+void Board::checkCheck(){
+        check = false;
+        blackcheck = false;
+        whitecheck = false;
+        for(int i = 0; i < 8; i++){
+                for(int j = 0; j < 8; j++){
+                        if(squares[i][j]->getPiece() != NULL){
+                                if(squares[i][j]->canTake
+                                                (bKR, bKC, squares)){
+                                        check = true;
+                                        blackcheck = true;
+                                }
+                                if(squares[i][j]->canTake
+                                                (wKR, wKC, squares)){
+                                        check = true;
+                                        whitecheck = true;
+                                }
+                        }
+                }
+        }
+}
+
+bool Board::checkCheckMate(){
+        if(check){
+                int r;
+                int c;
+
+                int count = 0;
+
+                if(whitecheck){
+                        r = wKR;
+                        c = wKC;
+                }
+                else{
+                        r = bKR;
+                        c = bKC;
+                }
+
+
+                for(int i = std::max(0, r-1);i<std::min(r+2,8); i++){
+                        for(int j = std::max(0, c-1); j<std::min(8,c+2); j++){
+                                if(canMove(r, c, i, j)){
+                                        return false;
+                                }
+                        }
+                }
+
+
+                for(int i = 0; i < 8; i++){
+                        for(int j = 0; j < 8; j++){
+                                if(squares[i][j]->getPiece() != NULL && squares[i][j]->canTake(r, c, squares)){
+                                        count++;
+                                }
+                        }
+                }
+
+                if(count == 1){
+                        for(int i = 0; i < 8; i++){
+                                for(int j = 0; j < 8; j++){
+                                        std::string s1 = "";
+                                        if (whitecheck){s1 = "white";}
+                                        else{s1 = "black";}
+                                        if(squares[i][j]->getPiece() != NULL &&
+                                                        squares[i][j]->getPiece()->getColor() == s1){
+                                                for(int k = 0; k < 8; k++){
+                                                        for(int l = 0; l < 8; l++){
+                                                                if (canMove(i, j, k, l)){
+                                                                        return false;
+                                                                }
+                                                        }
+                                                }
+                                        }
+                                }
+                        }
+                        return true;
+                }
+                else{
+                        return true;
+                }
+        }
+        else{
+                return false;
+        }
+}
+
+void Board::undo(){
+        turn--;
+        for(int i = 0; i < 8; i++){
+                for(int j = 0; j < 8; j++){
+                        squares[i][j]->undo(turn);
+                        squares[i][j]->updateMap(turn);
+                        if(squares[i][j]->getPieceName() == "king"){
+                                if(squares[i][j]->getPiece()->getColor() == "white"){
+                                        wKR = i;
+                                        wKC = j;
+                                }
+                                else{
+                                        bKR = i;
+                                        bKC = j;
+                                }
+                        }
+                }
+        }
+
+
+        whitemove = !whitemove;
+        checkCheck();
+}
+
 void Board::newgamePressed(){
         reset();
 }
 
 void Board::undoPressed(){
-        //!!!!!!!!!!!!!!!!!!!!!!!!
+        if(turn != 1){
+                undo();
+                moving = false;
+                movingR = -1;
+                movingC = -1;
+                for(int i = 0; i < 8; i++){
+                        for(int j = 0; j < 8; j++){
+                                squares[i][j]->highlight(false);
+                        }
+                }
+                update();
+        }
 }
